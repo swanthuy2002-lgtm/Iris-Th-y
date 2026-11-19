@@ -1,0 +1,916 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Chấm công theo ca – Mộc Lan</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+  :root{
+    --nen:#f5f3ee; --the:#ffffff; --chu:#1f2421; --phu:#6b716c; --vien:#dcd8cf;
+    --chinh:#2f6b4f; --chinh-dam:#24543e; --loi:#b3261e; --loi-nen:#fdecea;
+    --canh:#8a5a00; --canh-nen:#fff4d6; --ok:#1e6b3a; --ok-nen:#e6f4ea; --khoa:#eef0ec;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;background:var(--nen);color:var(--chu);
+    font:16px/1.45 system-ui,-apple-system,"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif}
+  button,input,select{font:inherit;color:inherit}
+  .an{display:none!important}
+  .khung{max-width:760px;margin:0 auto;padding:12px 12px 110px}
+
+  /* Đăng nhập */
+  #dangNhap{min-height:100vh;display:flex;align-items:center;justify-content:center;padding:16px}
+  .the-dn{background:var(--the);border:1px solid var(--vien);border-radius:14px;padding:24px;width:100%;max-width:380px}
+  .the-dn h1{font-size:1.3rem;margin:0 0 4px}
+  .the-dn p{margin:0 0 18px;color:var(--phu);font-size:.92rem}
+  label{display:block;font-size:.85rem;color:var(--phu);margin:10px 0 4px}
+  input,select{width:100%;padding:10px 11px;border:1px solid var(--vien);border-radius:9px;background:#fff;min-height:44px}
+  input:focus,select:focus{outline:2px solid var(--chinh);outline-offset:0;border-color:var(--chinh)}
+  input:disabled,select:disabled{background:var(--khoa);color:var(--phu)}
+  .nut{display:inline-flex;align-items:center;justify-content:center;gap:6px;border:1px solid var(--chinh);
+    background:var(--chinh);color:#fff;border-radius:9px;padding:10px 14px;min-height:44px;cursor:pointer;font-weight:600}
+  .nut:hover{background:var(--chinh-dam)}
+  .nut.phu{background:#fff;color:var(--chinh)}
+  .nut.phu:hover{background:#eef5f1}
+  .nut.nho{min-height:36px;padding:6px 10px;font-size:.9rem}
+  .nut:disabled{opacity:.55;cursor:default}
+  .rong{width:100%}
+  .bao-loi{color:var(--loi);font-size:.9rem;margin-top:10px;min-height:1.2em}
+
+  /* Đầu trang */
+  .dau{background:var(--the);border:1px solid var(--vien);border-radius:14px;padding:12px 14px;margin-bottom:10px}
+  .dau-tren{display:flex;justify-content:space-between;align-items:flex-start;gap:10px}
+  .ten{font-weight:700;font-size:1.05rem}
+  .vai{color:var(--phu);font-size:.9rem}
+  .bo-loc{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:10px}
+  .bo-loc .ca-hang{grid-column:1/-1}
+  .dem{margin-top:10px;display:flex;gap:8px;flex-wrap:wrap}
+  .the-dem{background:var(--ok-nen);color:var(--ok);border-radius:999px;padding:4px 12px;font-weight:600;font-size:.92rem}
+  .the-dem.cho{background:var(--canh-nen);color:var(--canh)}
+  .con-lai{margin-top:10px;background:var(--canh-nen);color:var(--canh);border-radius:9px;padding:8px 10px;font-size:.92rem}
+  .con-lai.xong{background:var(--ok-nen);color:var(--ok)}
+  .con-lai summary{cursor:pointer;font-weight:600}
+  .ds-con-lai{margin-top:6px;color:var(--chu);font-size:.88rem}
+  .ds-con-lai small{display:block;color:var(--phu);margin-top:4px}
+  .sua-ra{background:#f6f8f5;border-radius:10px;padding:8px;margin-top:8px}
+  .ls{margin-top:8px;font-size:.88rem;border-top:1px dashed var(--vien);padding-top:6px}
+  .ls div{padding:3px 0}
+  .ls small{color:var(--phu)}
+  .chi-tiet{font-size:.88rem;color:var(--phu);margin-top:4px}
+  .the-tab{display:flex;gap:6px;margin-top:12px;background:var(--khoa);padding:4px;border-radius:10px}
+  .tab{flex:1;border:0;background:none;border-radius:8px;padding:9px 6px;font-weight:600;color:var(--phu);cursor:pointer;min-height:40px}
+  .tab.chon{background:#fff;color:var(--chinh);box-shadow:0 1px 3px rgba(0,0,0,.08)}
+  .tieu-de{font-weight:700;font-size:1.02rem;margin-bottom:2px}
+  .xem-truoc{margin-top:12px;background:#f6f8f5;border-radius:10px;padding:10px;font-size:.92rem}
+  .xem-truoc ul{margin:6px 0 0;padding-left:18px}
+  .lan-chuyen{border-top:1px solid #eee;padding:10px 0;font-size:.92rem}
+  .lan-chuyen:first-child{border-top:0}
+  .lan-chuyen small{display:block;color:var(--phu)}
+  .chi-xem{margin-top:10px;background:var(--khoa);border-radius:9px;padding:8px 10px;font-size:.9rem;color:var(--phu)}
+
+  /* Công cụ */
+  .cong-cu{background:var(--the);border:1px solid var(--vien);border-radius:14px;padding:12px;margin-bottom:10px}
+  .hang-nut{display:flex;gap:8px;flex-wrap:wrap}
+  .hang-nut .nut{flex:1 1 150px}
+  .tim{position:relative;margin-top:10px}
+  .ket-qua{position:absolute;left:0;right:0;top:100%;z-index:5;background:#fff;border:1px solid var(--vien);
+    border-radius:9px;margin-top:4px;max-height:280px;overflow:auto;box-shadow:0 6px 20px rgba(0,0,0,.08)}
+  .muc{padding:10px 12px;border-bottom:1px solid #eee;cursor:pointer}
+  .muc:last-child{border-bottom:0}
+  .muc:hover{background:#f3f7f4}
+  .muc.khoa{cursor:default;color:var(--phu);background:#fafafa}
+  .muc small{display:block;color:var(--phu)}
+
+  /* Dòng chấm công */
+  .dong{background:var(--the);border:1px solid var(--vien);border-radius:14px;padding:12px;margin-bottom:10px}
+  .dong.da-luu{background:#fbfcfa;border-color:#cfe3d6}
+  .dong.loi{border-color:var(--loi)}
+  .dong-dau{display:flex;justify-content:space-between;gap:8px;align-items:flex-start}
+  .dong-ten{font-weight:700}
+  .dong-ma{color:var(--phu);font-size:.88rem}
+  .xoa{border:0;background:none;color:var(--phu);font-size:1.3rem;line-height:1;padding:4px 8px;cursor:pointer;border-radius:8px}
+  .xoa:hover{background:#f1f1f1;color:var(--loi)}
+  .luoi{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:6px}
+  .luoi .rong-het{grid-column:1/-1}
+  .luoi label{margin:2px 0 3px}
+  .nv-moi{background:#f6f8f5;border-radius:10px;padding:8px;margin-top:8px}
+  .nv-moi .tieu{font-size:.85rem;font-weight:600;color:var(--chinh)}
+  .tb{margin-top:8px;font-size:.9rem;border-radius:8px;padding:6px 9px}
+  .tb.loi{background:var(--loi-nen);color:var(--loi)}
+  .tb.canh{background:var(--canh-nen);color:var(--canh)}
+  .tb.ok{background:var(--ok-nen);color:var(--ok)}
+  .huy-hieu{display:inline-block;font-size:.78rem;padding:2px 8px;border-radius:999px;background:var(--ok-nen);color:var(--ok);font-weight:600;white-space:nowrap}
+  .huy-hieu.dc{background:var(--canh-nen);color:var(--canh)}
+  .trong{text-align:center;color:var(--phu);padding:28px 12px;background:var(--the);border:1px dashed var(--vien);border-radius:14px}
+
+  /* Thanh lưu dưới cùng */
+  .thanh-luu{position:fixed;left:0;right:0;bottom:0;background:rgba(255,255,255,.96);border-top:1px solid var(--vien);
+    padding:10px 12px calc(10px + env(safe-area-inset-bottom));backdrop-filter:blur(6px)}
+  .thanh-luu .ben-trong{max-width:760px;margin:0 auto;display:flex;gap:10px;align-items:center}
+  .thanh-luu .ghi{flex:1;font-size:.88rem;color:var(--phu)}
+  .thanh-luu .nut{flex:0 0 auto;min-width:150px}
+
+  @media (min-width:640px){
+    .bo-loc{grid-template-columns:1.3fr 1fr 1fr}
+    .bo-loc .ca-hang{grid-column:auto}
+    .luoi{grid-template-columns:repeat(4,1fr)}
+    .luoi .doi{grid-column:span 2}
+  }
+</style>
+</head>
+<body>
+
+<!-- ĐĂNG NHẬP -->
+<section id="dangNhap">
+  <form class="the-dn" id="formDangNhap" autocomplete="on">
+    <h1>Chấm công theo ca</h1>
+    <p>Công ty CP Ẩm thực Mộc Lan</p>
+    <label for="email">Email</label>
+    <input id="email" type="email" inputmode="email" autocomplete="username" required>
+    <label for="matKhau">Mật khẩu</label>
+    <input id="matKhau" type="password" autocomplete="current-password" required>
+    <div style="height:14px"></div>
+    <button class="nut rong" id="nutDangNhap" type="submit">Đăng nhập</button>
+    <div class="bao-loi" id="loiDangNhap"></div>
+  </form>
+</section>
+
+<!-- TRANG CHÍNH -->
+<main id="ungDung" class="an">
+  <div class="khung">
+    <header class="dau">
+      <div class="dau-tren">
+        <div>
+          <div class="ten" id="tenNguoiDung"></div>
+          <div class="vai" id="vaiTro"></div>
+        </div>
+        <button class="nut phu nho" id="nutDangXuat" type="button">Đăng xuất</button>
+      </div>
+      <div class="bo-loc">
+        <div class="ca-hang">
+          <label for="chonCuaHang">Cửa hàng</label>
+          <select id="chonCuaHang"></select>
+        </div>
+        <div>
+          <label for="chonNgay">Ngày</label>
+          <input id="chonNgay" type="date">
+        </div>
+        <div>
+          <label for="chonCa">Ca</label>
+          <select id="chonCa"></select>
+        </div>
+      </div>
+      <div class="dem">
+        <span class="the-dem" id="demDaCham">Đã chấm công: 0 nhân viên</span>
+        <span class="the-dem cho an" id="demChuaLuu"></span>
+      </div>
+      <details class="con-lai" id="conLai">
+        <summary id="demConLai">Ca này cửa hàng còn 0 nhân viên chưa chấm công</summary>
+        <div class="ds-con-lai" id="dsConLai"></div>
+      </details>
+      <div class="chi-xem an" id="ghiChiXem">Tài khoản của anh/chị chỉ xem, không chấm công. Chấm sai thì quản lý vùng ghi dòng điều chỉnh.</div>
+      <div class="the-tab an" id="theTab">
+        <button type="button" class="tab chon" data-tab="cham">Chấm công</button>
+        <button type="button" class="tab" data-tab="chuyen">Chuyển nhân viên</button>
+      </div>
+    </header>
+
+    <!-- MÀN HÌNH CHUYỂN NHÂN VIÊN: chỉ quản trị viên -->
+    <section id="manChuyen" class="an">
+      <div class="cong-cu">
+        <div class="tieu-de">Chuyển nhân viên sang người quản lý khác</div>
+        <label for="chuyenTu">Người nghỉ (người đang quản lý)</label>
+        <select id="chuyenTu"></select>
+        <label for="chuyenNhan1">Người nhận</label>
+        <select id="chuyenNhan1"></select>
+        <label for="chuyenNhan2">Người nhận thứ hai (không bắt buộc, chia đều)</label>
+        <select id="chuyenNhan2"></select>
+        <label for="chuyenLyDo">Lý do</label>
+        <input id="chuyenLyDo" placeholder="Ví dụ: Cửa hàng trưởng nghỉ việc theo thông báo của Phòng Nhân sự">
+        <div class="hang-nut" style="margin-top:12px">
+          <button class="nut phu" type="button" id="nutXemTruoc">Xem trước</button>
+          <button class="nut" type="button" id="nutXacNhanChuyen" disabled>Xác nhận chuyển</button>
+        </div>
+        <div id="ketQuaXemTruoc"></div>
+      </div>
+      <div class="cong-cu">
+        <div class="tieu-de">Lịch sử các lần chuyển</div>
+        <div id="lichSuChuyen"><div class="chi-tiet">Đang tải…</div></div>
+      </div>
+    </section>
+
+    <section class="cong-cu" id="congCu">
+      <div class="hang-nut">
+        <button class="nut" id="nutThemCaCuaHang" type="button">＋ Thêm cả cửa hàng</button>
+        <button class="nut phu" id="nutNhanVienMoi" type="button">＋ Nhân viên mới</button>
+      </div>
+      <div class="tim">
+        <label for="oTim">Thêm từng người: gõ mã hoặc tên</label>
+        <input id="oTim" type="search" placeholder="Ví dụ: ML-0101 hoặc Hạnh" autocomplete="off">
+        <div class="ket-qua an" id="ketQuaTim"></div>
+      </div>
+    </section>
+
+    <div id="danhSach"></div>
+    <datalist id="dsNhanVienCH"></datalist>
+  </div>
+
+  <div class="thanh-luu" id="thanhLuu">
+    <div class="ben-trong">
+      <div class="ghi" id="ghiLuu">Chưa có dòng nào cần lưu.</div>
+      <button class="nut" id="nutLuuTatCa" type="button" disabled>Lưu tất cả</button>
+    </div>
+  </div>
+</main>
+
+<script>
+/* Kết nối dự án cham-cong-moc-lan. Chỉ dùng khóa công khai (publishable); dữ liệu được bảo vệ bằng phân quyền trên máy chủ. */
+const SUPABASE_URL = 'https://pwgzwprofnzaoirnuzdc.supabase.co';
+const SUPABASE_KEY = 'sb_publishable_3pn2xmuZmr077AOD6qhzSQ_jzQD_GSC';
+const sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+const TEN_VAI_TRO = { cua_hang_truong: 'Cửa hàng trưởng', quan_ly_vung: 'Quản lý vùng', quan_tri: 'Quản trị viên' };
+const THU_TU_TRANG_THAI = ['Đúng giờ', 'Đi muộn', 'Về sớm', 'Đổi ca', 'Vắng có phép', 'Vắng không phép'];
+const CAN_SO_PHUT = s => s === 'Đi muộn' || s === 'Về sớm';
+
+const tt = {
+  toi: null, cuaHang: [], cuaHangCuaToi: [], ca: [], trangThai: [], viTri: [], hopDong: [],
+  nhanVien: [], gioTrongNgay: {}, dong: [], dem: 0, duocCham: false,
+  daChamCaKhac: new Set(), tenNguoiDung: {}
+};
+const $ = id => document.getElementById(id);
+const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[c]));
+const tenCH = ma => (tt.cuaHang.find(c => c.ma_cua_hang === ma) || {}).ten_cua_hang || ma;
+const laVang = s => (s || '').startsWith('Vắng');
+const phut = hhmm => { if (!hhmm) return null; const [h, m] = hhmm.split(':').map(Number); return h * 60 + m; };
+const hhmm = t => t ? String(t).slice(0, 5) : '';
+const gioVN = iso => new Date(iso).toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit', timeZone: 'Asia/Ho_Chi_Minh' });
+const homNay = () => new Date().toLocaleDateString('en-CA', { timeZone: 'Asia/Ho_Chi_Minh' });
+const gioHienTai = () => new Date().toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit', timeZone: 'Asia/Ho_Chi_Minh' });
+const caDangChon = () => tt.ca.find(c => c.ma_ca === $('chonCa').value);
+let soKhoa = 0;
+const khoaMoi = () => 'd' + (++soKhoa);
+
+/* ---------- Đăng nhập ---------- */
+$('formDangNhap').addEventListener('submit', async e => {
+  e.preventDefault();
+  $('loiDangNhap').textContent = '';
+  $('nutDangNhap').disabled = true;
+  const { error } = await sb.auth.signInWithPassword({ email: $('email').value.trim(), password: $('matKhau').value });
+  $('nutDangNhap').disabled = false;
+  if (error) {
+    $('loiDangNhap').textContent = /banned/i.test(error.message)
+      ? 'Tài khoản đã bị khóa. Liên hệ quản trị viên nếu cần.'
+      : 'Email hoặc mật khẩu không đúng.';
+    return;
+  }
+  await batDau();
+});
+$('nutDangXuat').addEventListener('click', async () => {
+  if (coDongChuaLuu() && !confirm('Còn dòng chưa lưu. Vẫn đăng xuất?')) return;
+  await sb.auth.signOut();
+  location.reload();
+});
+
+async function batDau() {
+  const { data: { user } } = await sb.auth.getUser();
+  if (!user) { hienDangNhap(); return; }
+  const { data: toi } = await sb.from('nguoi_dung').select('*').eq('id', user.id).maybeSingle();
+  if (!toi || toi.trang_thai !== 'hoat_dong') {
+    await sb.auth.signOut();
+    hienDangNhap('Tài khoản chưa được cấp quyền hoặc đã bị khóa. Liên hệ quản trị viên.');
+    return;
+  }
+  tt.toi = toi;
+  tt.duocCham = toi.vai_tro === 'cua_hang_truong';
+
+  const [ch, ca, dm] = await Promise.all([
+    sb.from('cua_hang').select('*').order('ten_cua_hang'),
+    sb.from('ca_lam_viec').select('*').order('gio_bat_dau'),
+    sb.from('danh_muc').select('*')
+  ]);
+  tt.cuaHang = ch.data || [];
+  tt.ca = ca.data || [];
+  const dmuc = dm.data || [];
+  tt.trangThai = THU_TU_TRANG_THAI.filter(v => dmuc.some(d => d.loai_danh_muc === 'trang_thai' && d.gia_tri === v));
+  tt.viTri = dmuc.filter(d => d.loai_danh_muc === 'vi_tri').map(d => d.gia_tri);
+  tt.hopDong = dmuc.filter(d => d.loai_danh_muc === 'loai_hop_dong').map(d => d.gia_tri);
+  const { data: nd } = await sb.from('nguoi_dung').select('id,ho_ten,vai_tro');
+  tt.tenNguoiDung = Object.fromEntries((nd || []).map(u => [u.id, u.ho_ten + ' (' + TEN_VAI_TRO[u.vai_tro] + ')']));
+
+  if (tt.duocCham) {
+    const { data: tam } = await sb.from('phan_cong_cua_hang_tam').select('*').eq('nguoi_dung_id', toi.id);
+    const d = homNay();
+    const maTam = (tam || []).filter(t => t.tu_ngay <= d && d <= t.den_ngay).map(t => t.ma_cua_hang);
+    // Cửa hàng có nhân viên được chuyển sang mình quản lý (kiêm nhiệm)
+    const { data: nvQL } = await sb.from('nhan_vien').select('ma_cua_hang').eq('nguoi_quan_ly', toi.id).eq('dang_lam_viec', true);
+    const maKiem = [...new Set((nvQL || []).map(n => n.ma_cua_hang))];
+    tt.cuaHangKiem = new Set([...maTam, ...maKiem].filter(m => m !== toi.ma_cua_hang));
+    tt.cuaHangCuaToi = [toi.ma_cua_hang, ...tt.cuaHangKiem];
+  } else {
+    tt.cuaHangCuaToi = tt.cuaHang.map(c => c.ma_cua_hang);
+  }
+
+  $('tenNguoiDung').textContent = toi.ho_ten;
+  $('vaiTro').textContent = TEN_VAI_TRO[toi.vai_tro] + (toi.ma_cua_hang ? ' · ' + tenCH(toi.ma_cua_hang) : ' · Toàn vùng');
+  $('chonCuaHang').innerHTML = tt.cuaHangCuaToi.map(m =>
+    `<option value="${esc(m)}">${esc(tenCH(m))}${tt.duocCham && m !== toi.ma_cua_hang ? ' (kiêm nhiệm)' : ''}</option>`).join('');
+  $('chonCuaHang').disabled = tt.cuaHangCuaToi.length < 2;
+  $('chonCa').innerHTML = tt.ca.map(c =>
+    `<option value="${esc(c.ma_ca)}">${esc(c.ten_ca)} (${hhmm(c.gio_bat_dau)}–${hhmm(c.gio_ket_thuc)})</option>`).join('');
+  $('chonNgay').value = homNay();
+  $('chonNgay').max = homNay();
+  $('chonCa').value = phut(gioHienTai()) < 14 * 60 ? 'SANG' : 'CHIEU';
+
+  $('congCu').classList.toggle('an', !tt.duocCham);
+  $('thanhLuu').classList.toggle('an', !tt.duocCham);
+  $('ghiChiXem').classList.toggle('an', tt.duocCham);
+
+  $('theTab').classList.toggle('an', toi.vai_tro !== 'quan_tri');
+
+  $('dangNhap').classList.add('an');
+  $('ungDung').classList.remove('an');
+  await taiCa();
+}
+
+/* ---------- Chuyển nhân viên (chỉ quản trị viên; máy chủ cũng chặn mọi vai trò khác) ---------- */
+document.querySelectorAll('.tab').forEach(b => b.addEventListener('click', async () => {
+  document.querySelectorAll('.tab').forEach(x => x.classList.toggle('chon', x === b));
+  const chuyen = b.dataset.tab === 'chuyen';
+  $('manChuyen').classList.toggle('an', !chuyen);
+  ['congCu', 'danhSach', 'conLai'].forEach(id => $(id).classList.toggle('an', chuyen || (id === 'congCu' && !tt.duocCham)));
+  document.querySelector('.bo-loc').classList.toggle('an', chuyen);
+  document.querySelector('.dem').classList.toggle('an', chuyen);
+  if (chuyen) await taiManChuyen();
+}));
+
+const ct = { nguoi: [], nhanVien: [], xemTruoc: null };
+async function taiManChuyen() {
+  const [nd, nv] = await Promise.all([
+    sb.from('nguoi_dung').select('id,ho_ten,vai_tro,ma_cua_hang,trang_thai').eq('vai_tro', 'cua_hang_truong').order('ho_ten'),
+    sb.from('nhan_vien').select('ma_nhan_vien,ho_ten,ma_cua_hang,nguoi_quan_ly,dang_lam_viec')
+  ]);
+  ct.nguoi = nd.data || [];
+  ct.nhanVien = nv.data || [];
+  const soNV = id => ct.nhanVien.filter(n => n.nguoi_quan_ly === id).length;
+  const nhan = u => `${esc(u.ho_ten)} · ${esc(tenCH(u.ma_cua_hang))}`;
+  const giu = $('chuyenTu').value;
+  // Người nghỉ: tài khoản đã khóa lên đầu
+  const ds = [...ct.nguoi].sort((a, b) => (a.trang_thai === 'khoa' ? 0 : 1) - (b.trang_thai === 'khoa' ? 0 : 1));
+  $('chuyenTu').innerHTML = ds.map(u =>
+    `<option value="${u.id}">${nhan(u)} — ${soNV(u.id)} nhân viên${u.trang_thai === 'khoa' ? ' (đã khóa)' : ''}</option>`).join('');
+  if (giu) $('chuyenTu').value = giu;
+  const dangHD = ct.nguoi.filter(u => u.trang_thai === 'hoat_dong');
+  $('chuyenNhan1').innerHTML = '<option value="">— Chọn người nhận —</option>' + dangHD.map(u => `<option value="${u.id}">${nhan(u)}</option>`).join('');
+  $('chuyenNhan2').innerHTML = '<option value="">Không có</option>' + dangHD.map(u => `<option value="${u.id}">${nhan(u)}</option>`).join('');
+  boXemTruoc();
+  await taiLichSuChuyen();
+}
+function boXemTruoc() { ct.xemTruoc = null; $('nutXacNhanChuyen').disabled = true; $('ketQuaXemTruoc').innerHTML = ''; }
+['chuyenTu', 'chuyenNhan1', 'chuyenNhan2', 'chuyenLyDo'].forEach(id => $(id).addEventListener('input', boXemTruoc));
+
+function thamSoChuyen() {
+  const tu = $('chuyenTu').value, n1 = $('chuyenNhan1').value, n2 = $('chuyenNhan2').value;
+  const lyDo = $('chuyenLyDo').value.trim();
+  if (!tu) return { loi: 'Chọn người nghỉ.' };
+  if (!n1) return { loi: 'Chọn ít nhất một người nhận.' };
+  if (n1 === tu || n2 === tu) return { loi: 'Người nhận phải khác người nghỉ.' };
+  if (n2 && n2 === n1) return { loi: 'Hai người nhận phải khác nhau.' };
+  if (lyDo.length < 5) return { loi: 'Ghi lý do chuyển (ít nhất 5 ký tự).' };
+  return { tu, nhan: n2 ? [n1, n2] : [n1], lyDo };
+}
+
+$('nutXemTruoc').addEventListener('click', async () => {
+  const p = thamSoChuyen();
+  if (p.loi) { $('ketQuaXemTruoc').innerHTML = `<div class="tb loi">${esc(p.loi)}</div>`; return; }
+  const { data, error } = await sb.rpc('xem_truoc_chuyen', { p_tu: p.tu, p_nguoi_nhan: p.nhan });
+  if (error) { $('ketQuaXemTruoc').innerHTML = `<div class="tb loi">${esc(dichLoi(error))}</div>`; return; }
+  if (!data.length) { $('ketQuaXemTruoc').innerHTML = '<div class="tb canh">Người này không còn nhân viên nào để chuyển.</div>'; return; }
+  ct.xemTruoc = p;
+  const theoNguoi = {};
+  data.forEach(r => (theoNguoi[r.ten_nguoi_nhan] = theoNguoi[r.ten_nguoi_nhan] || []).push(r));
+  $('ketQuaXemTruoc').innerHTML = `<div class="xem-truoc"><b>Sẽ chuyển ${data.length} nhân viên.</b>` +
+    Object.entries(theoNguoi).map(([ten, ds]) =>
+      `<div style="margin-top:8px"><b>${esc(ten)}</b> nhận ${ds.length} người:<ul>${ds.map(r =>
+        `<li>${esc(r.ma_nhan_vien)} · ${esc(r.ho_ten)} · ${esc(r.ten_cua_hang)}${r.dang_lam_viec ? '' : ' (đã nghỉ)'}</li>`).join('')}</ul></div>`).join('') +
+    `<div class="chi-tiet">Số liệu chấm công cũ giữ nguyên. Lần chuyển được ghi vào lịch sử và không sửa, không xóa được.</div></div>`;
+  $('nutXacNhanChuyen').disabled = false;
+});
+
+$('nutXacNhanChuyen').addEventListener('click', async () => {
+  const p = ct.xemTruoc;
+  if (!p) return;
+  if (!confirm('Xác nhận chuyển nhân viên như phần xem trước? Lần chuyển sẽ được ghi vào lịch sử.')) return;
+  const nut = $('nutXacNhanChuyen');
+  nut.disabled = true; nut.textContent = 'Đang chuyển…';
+  const { data, error } = await sb.rpc('chuyen_nhan_vien', { p_tu: p.tu, p_nguoi_nhan: p.nhan, p_ly_do: p.lyDo });
+  nut.textContent = 'Xác nhận chuyển';
+  if (error) { $('ketQuaXemTruoc').insertAdjacentHTML('beforeend', `<div class="tb loi">${esc(dichLoi(error))}</div>`); return; }
+  $('chuyenLyDo').value = '';
+  await taiManChuyen();
+  $('ketQuaXemTruoc').innerHTML = `<div class="tb ok">Đã chuyển ${data[0].so_nhan_vien} nhân viên. Người nhận thấy nhân viên mới ngay khi tải lại trang.</div>`;
+});
+
+async function taiLichSuChuyen() {
+  const { data, error } = await sb.from('lich_su_chuyen_nhan_vien').select('*').order('thoi_diem', { ascending: false });
+  const hop = $('lichSuChuyen');
+  if (error) { hop.innerHTML = '<div class="chi-tiet">Không tải được lịch sử.</div>'; return; }
+  if (!data.length) { hop.innerHTML = '<div class="chi-tiet">Chưa có lần chuyển nào.</div>'; return; }
+  const ten = id => (tt.tenNguoiDung[id] || '').replace(/ \(.*\)$/, '') || 'Không rõ';
+  const tenNVx = ma => (ct.nhanVien.find(n => n.ma_nhan_vien === ma) || {}).ho_ten || '';
+  const lan = {};
+  data.forEach(r => (lan[r.ma_lan_chuyen] = lan[r.ma_lan_chuyen] || []).push(r));
+  hop.innerHTML = Object.values(lan).map(ds => {
+    const r = ds[0];
+    const sang = {};
+    ds.forEach(x => (sang[x.sang_nguoi_quan_ly] = sang[x.sang_nguoi_quan_ly] || []).push(x));
+    return `<div class="lan-chuyen">
+      <b>${esc(new Date(r.thoi_diem).toLocaleString('vi-VN', { timeZone: 'Asia/Ho_Chi_Minh' }))}</b> · ${ds.length} nhân viên
+      <div>Từ <b>${esc(ten(r.tu_nguoi_quan_ly))}</b> sang ${Object.entries(sang).map(([id, xs]) => `<b>${esc(ten(id))}</b> (${xs.length})`).join(' và ')}</div>
+      <small>Người thực hiện: ${esc(ten(r.nguoi_thuc_hien))} · Lý do: ${esc(r.ly_do)}</small>
+      <small>${ds.map(x => esc(x.ma_nhan_vien) + (tenNVx(x.ma_nhan_vien) ? ' ' + esc(tenNVx(x.ma_nhan_vien)) : '') + ' → ' + esc(ten(x.sang_nguoi_quan_ly))).join('; ')}</small>
+    </div>`;
+  }).join('');
+}
+function hienDangNhap(thongBao) {
+  $('ungDung').classList.add('an');
+  $('dangNhap').classList.remove('an');
+  $('loiDangNhap').textContent = thongBao || '';
+}
+
+/* ---------- Đổi cửa hàng / ngày / ca ---------- */
+let giaTriCu = {};
+['chonCuaHang', 'chonNgay', 'chonCa'].forEach(id => {
+  $(id).addEventListener('focus', () => { giaTriCu[id] = $(id).value; });
+  $(id).addEventListener('change', async () => {
+    if (coDongChuaLuu() && !confirm('Các dòng chưa lưu sẽ bị bỏ. Vẫn đổi?')) { $(id).value = giaTriCu[id]; return; }
+    await taiCa();
+  });
+});
+
+async function taiCa() {
+  const ma = $('chonCuaHang').value, ngay = $('chonNgay').value, ca = $('chonCa').value;
+  $('danhSach').innerHTML = '<div class="trong">Đang tải…</div>';
+  const [nv, cc, gio] = await Promise.all([
+    sb.from('nhan_vien').select('ma_nhan_vien,ho_ten,vi_tri,ma_cua_hang').eq('ma_cua_hang', ma).eq('dang_lam_viec', true).order('ma_nhan_vien'),
+    sb.from('v_cham_cong_hieu_luc').select('*').eq('ma_cua_hang', ma).eq('ngay', ngay).order('thoi_diem_luu'),
+    sb.from('v_gio_cong_ngay').select('ma_nhan_vien,tong_gio').eq('ngay', ngay)
+  ]);
+  if (nv.error || cc.error) { $('danhSach').innerHTML = '<div class="trong">Không tải được dữ liệu. Kiểm tra mạng rồi thử lại.</div>'; return; }
+  tt.nhanVien = nv.data || [];
+  $('dsNhanVienCH').innerHTML = tt.nhanVien.map(n => `<option value="${esc(n.ma_nhan_vien)} · ${esc(n.ho_ten)}"></option>`).join('');
+  tt.gioTrongNgay = Object.fromEntries((gio.data || []).map(g => [g.ma_nhan_vien, Number(g.tong_gio)]));
+  const caNgay = cc.data || [];
+  tt.daChamCaKhac = new Set(caNgay.filter(r => r.ma_ca !== ca).map(r => r.ma_nhan_vien));
+  tt.dong = caNgay.filter(r => r.ma_ca === ca).map(dongDaLuu);
+  ve();
+}
+const tenNV = ma => (tt.nhanVien.find(n => n.ma_nhan_vien === ma) || {}).ho_ten || '';
+function dongDaLuu(r) {
+  const nv = tt.nhanVien.find(n => n.ma_nhan_vien === r.ma_nhan_vien) || {};
+  return {
+    khoa: khoaMoi(), daLuu: true, id: r.id, ma: r.ma_nhan_vien, ten: nv.ho_ten || r.ma_nhan_vien, viTri: nv.vi_tri || '',
+    vao: r.gio_vao ? gioVN(r.gio_vao) : '', ra: r.gio_ra ? gioVN(r.gio_ra) : '',
+    trangThai: r.trang_thai, soPhut: r.so_phut, soPhutTuTinh: r.so_phut_tu_tinh, doiCaVoi: r.doi_ca_voi || '',
+    ghiChu: r.ghi_chu || '', noi: r.noi_lam_viec, gioLuu: r.thoi_diem_luu,
+    daDieuChinh: r.da_dieu_chinh, lyDo: r.ly_do_dieu_chinh, soLanSua: r.so_lan_sua, hanSua: r.han_sua_gio_ra,
+    moSua: false, lichSu: null
+  };
+}
+/* Còn được sửa giờ ra: cửa hàng trưởng, trong 3 ngày sau khi lưu, dòng có giờ ra */
+const conSuaDuoc = d => tt.duocCham && d.daLuu && d.hanSua && new Date() <= new Date(d.hanSua) && !laVang(d.trangThai);
+
+/* ---------- Tạo dòng ---------- */
+function dongMoi(nv, laNhanVienMoi) {
+  const ca = caDangChon();
+  return {
+    khoa: khoaMoi(), daLuu: false, moi: !!laNhanVienMoi,
+    ma: nv ? nv.ma_nhan_vien : '', ten: nv ? nv.ho_ten : '', viTri: nv ? nv.vi_tri : '',
+    nvMoi: laNhanVienMoi ? { ma: '', ten: '', viTri: tt.viTri[0] || '', hopDong: 'Bán thời gian', donGia: '' } : null,
+    vao: hhmm(ca.gio_bat_dau), ra: hhmm(ca.gio_ket_thuc), trangThai: 'Đúng giờ', tuChonTrangThai: false,
+    soPhut: '', tuNhapSoPhut: false, doiCaVoi: '',
+    ghiChu: '', noi: $('chonCuaHang').value, tb: null
+  };
+}
+/* Số phút gợi ý: đi muộn tính từ giờ bắt đầu ca, về sớm tính tới giờ kết thúc ca */
+function goiYSoPhut(trangThai, vao, ra) {
+  const ca = caDangChon();
+  if (trangThai === 'Đi muộn' && vao) return Math.max(0, phut(vao) - phut(hhmm(ca.gio_bat_dau)));
+  if (trangThai === 'Về sớm' && ra) return Math.max(0, phut(hhmm(ca.gio_ket_thuc)) - phut(ra));
+  return '';
+}
+const maTuO = s => { const m = String(s || '').match(/ML-?\s*\d{1,4}|\d{1,4}/i); return m ? chuanHoaMa(m[0]) : ''; };
+const daCoTrongBang = ma => tt.dong.some(d => d.ma === ma && !d.moi);
+
+$('nutThemCaCuaHang').addEventListener('click', () => {
+  let them = 0;
+  tt.nhanVien.forEach(nv => { if (!daCoTrongBang(nv.ma_nhan_vien)) { tt.dong.push(dongMoi(nv)); them++; } });
+  ve();
+  if (!them) alert('Tất cả nhân viên của cửa hàng đã có trong bảng ca này.');
+});
+$('nutNhanVienMoi').addEventListener('click', () => {
+  tt.dong.push(dongMoi(null, true));
+  ve();
+  const o = document.querySelector(`[data-khoa="${tt.dong.at(-1).khoa}"] [data-f="nvMa"]`);
+  if (o) o.focus();
+});
+
+/* Tìm theo mã hoặc tên: nhân viên cửa hàng khác chỉ hiện tên và cửa hàng, không thêm được */
+let hen;
+$('oTim').addEventListener('input', () => {
+  clearTimeout(hen);
+  const q = $('oTim').value.trim();
+  if (q.length < 2) { $('ketQuaTim').classList.add('an'); return; }
+  hen = setTimeout(() => tim(q), 250);
+});
+document.addEventListener('click', e => { if (!e.target.closest('.tim')) $('ketQuaTim').classList.add('an'); });
+
+async function tim(q) {
+  const { data, error } = await sb.rpc('tim_nhan_vien', { tu_khoa: q });
+  const hop = $('ketQuaTim');
+  if (error) { hop.innerHTML = '<div class="muc khoa">Không tìm được, thử lại.</div>'; hop.classList.remove('an'); return; }
+  const chMa = $('chonCuaHang').value;
+  hop.innerHTML = (data || []).length ? data.map(r => {
+    const maCH = (tt.cuaHang.find(c => c.ten_cua_hang === r.ten_cua_hang) || {}).ma_cua_hang;
+    if (!r.duoc_cham_cong) {
+      return `<div class="muc khoa">${esc(r.ho_ten)}<small>Thuộc ${esc(r.ten_cua_hang)} · không chấm công được. Nếu đi hỗ trợ, cửa hàng chủ quản chấm và chọn nơi làm.</small></div>`;
+    }
+    if (maCH !== chMa) {
+      return `<div class="muc khoa">${esc(r.ho_ten)} · ${esc(r.ma_nhan_vien)}<small>Thuộc ${esc(r.ten_cua_hang)} · chọn cửa hàng này ở đầu trang để chấm.</small></div>`;
+    }
+    const daCo = daCoTrongBang(r.ma_nhan_vien);
+    return `<div class="muc${daCo ? ' khoa' : ''}" data-ma="${esc(r.ma_nhan_vien)}">${esc(r.ho_ten)} · ${esc(r.ma_nhan_vien)}<small>${daCo ? 'Đã có trong bảng' : esc(r.ten_cua_hang)}</small></div>`;
+  }).join('') : '<div class="muc khoa">Không thấy nhân viên nào. Người mới vào làm thì bấm “＋ Nhân viên mới”.</div>';
+  hop.classList.remove('an');
+}
+$('ketQuaTim').addEventListener('click', e => {
+  const m = e.target.closest('.muc[data-ma]');
+  if (!m || m.classList.contains('khoa')) return;
+  const nv = tt.nhanVien.find(n => n.ma_nhan_vien === m.dataset.ma);
+  if (nv) { tt.dong.push(dongMoi(nv)); ve(); }
+  $('oTim').value = ''; $('ketQuaTim').classList.add('an');
+});
+
+/* ---------- Vẽ bảng ---------- */
+function luaChon(ds, chon) { return ds.map(v => `<option${v === chon ? ' selected' : ''}>${esc(v)}</option>`).join(''); }
+function luaChonCH(chon) {
+  return tt.cuaHang.map(c => `<option value="${esc(c.ma_cua_hang)}"${c.ma_cua_hang === chon ? ' selected' : ''}>${esc(c.ten_cua_hang)}</option>`).join('');
+}
+
+function veDong(d) {
+  const khoa = d.daLuu || !tt.duocCham;
+  const vang = laVang(d.trangThai);
+  const tieuDe = d.moi
+    ? `<div class="dong-ten">Nhân viên mới</div><div class="dong-ma">Điền thông tin rồi chấm công luôn</div>`
+    : `<div class="dong-ten">${esc(d.ten)}</div><div class="dong-ma">${esc(d.ma)}${d.viTri ? ' · ' + esc(d.viTri) : ''}</div>`;
+  const nhan = d.daLuu
+    ? `<span class="huy-hieu">✓ Đã lưu ${d.gioLuu ? gioVN(d.gioLuu) : ''}</span>${d.daDieuChinh ? ` <span class="huy-hieu dc">Đã sửa ${d.soLanSua || ''} lần</span>` : ''}`
+    : `<button class="xoa" type="button" data-xoa="${d.khoa}" aria-label="Bỏ dòng này">✕</button>`;
+  const canPhut = CAN_SO_PHUT(d.trangThai), doiCa = d.trangThai === 'Đổi ca';
+  const chiTietLuu = d.daLuu ? [
+    canPhut && d.soPhut ? `${d.trangThai} ${d.soPhut} phút${d.soPhutTuTinh ? ' (tính từ giờ chấm, dữ liệu cũ)' : ''}` : '',
+    doiCa && d.doiCaVoi ? `Đổi ca với ${esc(d.doiCaVoi)}${tenNV(d.doiCaVoi) ? ' · ' + esc(tenNV(d.doiCaVoi)) : ''}` : ''
+  ].filter(Boolean).join(' · ') : '';
+  const phanSua = !d.daLuu ? '' : `
+    <div class="hang-nut" style="margin-top:8px">
+      ${conSuaDuoc(d) && !d.moSua ? `<button class="nut phu nho" type="button" data-sua="${d.khoa}">Sửa giờ ra</button>` : ''}
+      ${d.soLanSua ? `<button class="nut phu nho" type="button" data-ls="${d.khoa}">${d.lichSu ? 'Ẩn lịch sử sửa' : 'Lịch sử sửa (' + d.soLanSua + ')'}</button>` : ''}
+    </div>
+    ${tt.duocCham && d.hanSua && !conSuaDuoc(d) && !laVang(d.trangThai) ? '<div class="chi-tiet">Đã quá 3 ngày, muốn sửa thì nhờ quản lý vùng ghi điều chỉnh.</div>' : ''}
+    ${conSuaDuoc(d) && !d.moSua ? `<div class="chi-tiet">Được sửa giờ ra đến ${new Date(d.hanSua).toLocaleString('vi-VN', { hour: '2-digit', minute: '2-digit', day: '2-digit', month: '2-digit', timeZone: 'Asia/Ho_Chi_Minh' })}.</div>` : ''}
+    ${d.moSua ? `
+    <div class="sua-ra">
+      <div class="tieu" style="font-size:.85rem;font-weight:600;color:var(--chinh)">Sửa giờ ra (giữ lại lịch sử)</div>
+      <div class="luoi">
+        <div><label>Giờ ra mới</label><input type="time" data-s="ra" value="${esc(d.sua.ra)}"></div>
+        ${['Đúng giờ', 'Về sớm'].includes(d.trangThai)
+          ? `<div><label>Trạng thái</label><select data-s="trangThai">${luaChon(['Đúng giờ', 'Về sớm'], d.sua.trangThai)}</select></div>`
+          : `<div><label>Trạng thái</label><input value="${esc(d.trangThai)}" disabled></div>`}
+        <div class="${d.sua.trangThai === 'Về sớm' ? '' : 'an'}" data-hien-s="phut"><label>Số phút về sớm</label><input type="number" inputmode="numeric" min="1" data-s="soPhut" value="${esc(d.sua.soPhut)}"></div>
+        <div class="rong-het"><label>Lý do sửa</label><input data-s="lyDo" value="${esc(d.sua.lyDo)}" placeholder="Ví dụ: nhân viên khiếu nại quên chấm giờ ra"></div>
+      </div>
+      <div class="hang-nut" style="margin-top:8px">
+        <button class="nut nho" type="button" data-luu-sua="${d.khoa}">Lưu sửa</button>
+        <button class="nut phu nho" type="button" data-huy-sua="${d.khoa}">Hủy</button>
+      </div>
+    </div>` : ''}
+    ${d.lichSu ? `<div class="ls">${d.lichSu.length ? d.lichSu.map(x => `<div>${esc(new Date(x.thoi_diem).toLocaleString('vi-VN', { timeZone: 'Asia/Ho_Chi_Minh' }))}: giờ ra ${x.gio_ra_moi ? gioVN(x.gio_ra_moi) : '—'}, ${esc(x.trang_thai_moi)}${x.so_phut_moi ? ' ' + x.so_phut_moi + ' phút' : ''}<br><small>${esc(tt.tenNguoiDung[x.nguoi_dieu_chinh] || 'Người khác')} · Lý do: ${esc(x.ly_do)}</small></div>`).join('') : '<div>Chưa có lần sửa nào.</div>'}</div>` : ''}`;
+  const phanMoi = d.moi ? `
+    <div class="nv-moi">
+      <div class="tieu">Thông tin nhân viên mới</div>
+      <div class="luoi">
+        <div><label>Mã nhân viên</label><input data-f="nvMa" value="${esc(d.nvMoi.ma)}" placeholder="ML-0000" autocapitalize="characters"></div>
+        <div class="doi"><label>Họ và tên</label><input data-f="nvTen" value="${esc(d.nvMoi.ten)}"></div>
+        <div><label>Vị trí</label><select data-f="nvViTri">${luaChon(tt.viTri, d.nvMoi.viTri)}</select></div>
+        <div><label>Loại hợp đồng</label><select data-f="nvHopDong">${luaChon(tt.hopDong, d.nvMoi.hopDong)}</select></div>
+        <div><label>Đơn giá giờ (nghìn đồng)</label><input data-f="nvDonGia" type="number" inputmode="decimal" min="1" step="0.5" value="${esc(d.nvMoi.donGia)}" placeholder="Ví dụ 25"></div>
+      </div>
+    </div>` : '';
+  const tb = d.tb ? `<div class="tb ${d.tb.loai}">${esc(d.tb.chu)}</div>` : '';
+  const lyDo = d.daDieuChinh && d.lyDo ? `<div class="tb canh">Lý do điều chỉnh: ${esc(d.lyDo)}</div>` : '';
+  return `
+  <article class="dong${d.daLuu ? ' da-luu' : ''}${d.tb && d.tb.loai === 'loi' ? ' loi' : ''}" data-khoa="${d.khoa}">
+    <div class="dong-dau"><div>${tieuDe}</div><div>${nhan}</div></div>
+    ${phanMoi}
+    <div class="luoi">
+      <div><label>Giờ vào</label><input type="time" data-f="vao" value="${esc(d.vao)}" ${khoa || vang ? 'disabled' : ''}></div>
+      <div><label>Giờ ra</label><input type="time" data-f="ra" value="${esc(d.ra)}" ${khoa || vang ? 'disabled' : ''}></div>
+      <div class="doi"><label>Trạng thái</label><select data-f="trangThai" ${khoa ? 'disabled' : ''}>${luaChon(tt.trangThai, d.trangThai)}</select></div>
+      ${d.daLuu ? '' : `
+      <div class="doi${canPhut ? '' : ' an'}" data-hien="phut"><label>Số phút ${d.trangThai === 'Về sớm' ? 'về sớm' : 'đi muộn'} (bắt buộc)</label>
+        <input type="number" inputmode="numeric" min="1" step="1" data-f="soPhut" value="${esc(d.soPhut)}" ${khoa ? 'disabled' : ''}></div>
+      <div class="doi${doiCa ? '' : ' an'}" data-hien="doica"><label>Đổi ca với (bắt buộc)</label>
+        <input data-f="doiCaVoi" list="dsNhanVienCH" value="${esc(d.doiCaVoi)}" placeholder="Gõ mã hoặc chọn tên" ${khoa ? 'disabled' : ''}></div>`}
+      <div class="doi"><label>Nơi làm</label><select data-f="noi" ${khoa ? 'disabled' : ''}>${luaChonCH(d.noi)}</select></div>
+      <div class="doi"><label>Ghi chú</label><input data-f="ghiChu" value="${esc(d.ghiChu)}" placeholder="${khoa ? '' : 'Ví dụ: hỗ trợ cửa hàng khác'}" ${khoa ? 'disabled' : ''}></div>
+    </div>
+    ${chiTietLuu ? `<div class="chi-tiet">${chiTietLuu}</div>` : ''}
+    ${phanSua}
+    <div data-tb>${tb}${lyDo}</div>
+  </article>`;
+}
+
+function ve() {
+  const ds = $('danhSach');
+  if (!tt.dong.length) {
+    ds.innerHTML = `<div class="trong">${tt.duocCham
+      ? 'Chưa có ai trong ca này. Bấm “＋ Thêm cả cửa hàng” hoặc gõ mã, tên để thêm từng người.'
+      : 'Ca này chưa có chấm công.'}</div>`;
+  } else {
+    const thuTu = [...tt.dong.filter(d => !d.daLuu), ...tt.dong.filter(d => d.daLuu)];
+    ds.innerHTML = thuTu.map(veDong).join('');
+    tt.dong.filter(d => !d.daLuu).forEach(capNhatCanhBao);
+  }
+  capNhatDem();
+}
+
+function capNhatDem() {
+  const daLuu = new Set(tt.dong.filter(d => d.daLuu).map(d => d.ma)).size;
+  const cho = tt.dong.filter(d => !d.daLuu).length;
+  $('demDaCham').textContent = `Đã chấm công trong ca: ${daLuu} nhân viên`;
+  // Còn chưa chấm: nhân viên đang làm của cửa hàng chưa có dòng đã lưu ở ca này và chưa được chấm ở ca khác trong ngày
+  const daLuuCa = new Set(tt.dong.filter(d => d.daLuu).map(d => d.ma));
+  const conLai = tt.nhanVien.filter(n => !daLuuCa.has(n.ma_nhan_vien) && !tt.daChamCaKhac.has(n.ma_nhan_vien));
+  const caKhac = tt.nhanVien.filter(n => !daLuuCa.has(n.ma_nhan_vien) && tt.daChamCaKhac.has(n.ma_nhan_vien)).length;
+  $('demConLai').textContent = conLai.length
+    ? `Ca này cửa hàng còn ${conLai.length} nhân viên chưa chấm công`
+    : 'Ca này cửa hàng không còn nhân viên nào chưa chấm công';
+  $('conLai').classList.toggle('xong', !conLai.length);
+  $('dsConLai').innerHTML = (conLai.length ? conLai.map(n => esc(n.ho_ten) + ' (' + esc(n.ma_nhan_vien) + ')').join(', ') : '')
+    + `<small>Không tính ${caKhac} người đã được chấm ở ca khác trong ngày. Người nghỉ thì chấm "Vắng có phép" hoặc "Vắng không phép".</small>`;
+  $('demChuaLuu').textContent = `${cho} dòng chưa lưu`;
+  $('demChuaLuu').classList.toggle('an', !cho);
+  $('nutLuuTatCa').disabled = !cho;
+  $('ghiLuu').textContent = cho ? `${cho} dòng chờ lưu. Dòng nào sai sẽ báo lý do ngay tại dòng đó.` : 'Chưa có dòng nào cần lưu.';
+}
+const coDongChuaLuu = () => tt.dong.some(d => !d.daLuu);
+
+/* ---------- Nhập liệu trong dòng ---------- */
+const timDong = k => tt.dong.find(d => d.khoa === k);
+$('danhSach').addEventListener('click', async e => {
+  const x = e.target.closest('[data-xoa]');
+  if (x) { tt.dong = tt.dong.filter(d => d.khoa !== x.dataset.xoa); ve(); return; }
+
+  const s = e.target.closest('[data-sua]');
+  if (s) {
+    const d = timDong(s.dataset.sua);
+    d.moSua = true;
+    d.sua = { ra: d.ra, trangThai: d.trangThai, soPhut: d.trangThai === 'Về sớm' ? (d.soPhut || '') : '', lyDo: '' };
+    ve(); return;
+  }
+  const h = e.target.closest('[data-huy-sua]');
+  if (h) { const d = timDong(h.dataset.huySua); d.moSua = false; d.tb = null; ve(); return; }
+
+  const l = e.target.closest('[data-ls]');
+  if (l) {
+    const d = timDong(l.dataset.ls);
+    if (d.lichSu) { d.lichSu = null; ve(); return; }
+    const { data, error } = await sb.from('dieu_chinh_cham_cong')
+      .select('thoi_diem,gio_ra_moi,trang_thai_moi,so_phut_moi,ly_do,nguoi_dieu_chinh').eq('ma_cham_cong', d.id).order('thoi_diem');
+    d.lichSu = error ? [] : data; ve(); return;
+  }
+
+  const ls = e.target.closest('[data-luu-sua]');
+  if (ls) await luuSuaGioRa(timDong(ls.dataset.luuSua), ls);
+});
+
+async function luuSuaGioRa(d, nut) {
+  const sua = d.sua, ngay = $('chonNgay').value;
+  let loi = null;
+  if (!sua.ra) loi = 'Chưa nhập giờ ra mới.';
+  else if (phut(sua.ra) <= phut(d.vao)) loi = 'Giờ ra phải sau giờ vào (' + d.vao + ').';
+  else if (sua.trangThai === 'Về sớm' && !(Number(sua.soPhut) > 0)) loi = 'Chọn "Về sớm" thì phải nhập số phút.';
+  else if (!sua.lyDo.trim()) loi = 'Phải ghi lý do sửa.';
+  if (loi) { d.tb = { loai: 'loi', chu: loi }; ve(); return; }
+
+  nut.disabled = true; nut.textContent = 'Đang lưu…';
+  const { error } = await sb.from('dieu_chinh_cham_cong').insert({
+    ma_cham_cong: d.id, nguoi_dieu_chinh: tt.toi.id,
+    gio_ra_moi: `${ngay}T${sua.ra}:00+07:00`,
+    trang_thai_moi: sua.trangThai,
+    so_phut_moi: sua.trangThai === 'Về sớm' ? Number(sua.soPhut) : null,
+    ly_do: sua.lyDo.trim()
+  });
+  if (error) { d.tb = { loai: 'loi', chu: dichLoi(error) }; ve(); return; }
+
+  const { data: r } = await sb.from('v_cham_cong_hieu_luc').select('*').eq('id', d.id).single();
+  const { data: gio } = await sb.from('v_gio_cong_ngay').select('ma_nhan_vien,tong_gio,vuot_12_gio').eq('ngay', ngay).eq('ma_nhan_vien', d.ma).maybeSingle();
+  const moi = dongDaLuu(r);
+  moi.khoa = d.khoa;
+  moi.tb = gio && gio.vuot_12_gio
+    ? { loai: 'canh', chu: `⚠ Đã sửa giờ ra. Tổng giờ làm ngày này là ${Number(gio.tong_gio).toFixed(1)} giờ, vượt 12 giờ.` }
+    : { loai: 'ok', chu: `Đã sửa giờ ra thành ${sua.ra} và lưu vào lịch sử sửa.` };
+  if (gio) tt.gioTrongNgay[d.ma] = Number(gio.tong_gio);
+  tt.dong[tt.dong.indexOf(d)] = moi;
+  ve();
+}
+$('danhSach').addEventListener('input', xuLyNhap);
+$('danhSach').addEventListener('change', xuLyNhap);
+
+function xuLyNhap(e) {
+  const o = e.target, f = o.dataset.f;
+  const the = o.closest('[data-khoa]');
+  if (!the) return;
+  const d = tt.dong.find(x => x.khoa === the.dataset.khoa);
+  if (!d) return;
+  const ca = caDangChon();
+
+  /* Ô trong khung "Sửa giờ ra" của dòng đã lưu */
+  if (o.dataset.s && d.daLuu && d.sua) {
+    d.sua[o.dataset.s] = o.value;
+    if (o.dataset.s === 'trangThai' || (o.dataset.s === 'ra' && d.sua.trangThai === 'Về sớm')) {
+      the.querySelector('[data-hien-s="phut"]').classList.toggle('an', d.sua.trangThai !== 'Về sớm');
+      if (d.sua.trangThai === 'Về sớm') {
+        const g = goiYSoPhut('Về sớm', null, d.sua.ra);
+        if (g) { d.sua.soPhut = g; the.querySelector('[data-s="soPhut"]').value = g; }
+      }
+    }
+    return;
+  }
+  if (!f || d.daLuu) return;
+  if (f.startsWith('nv')) {
+    const k = { nvMa: 'ma', nvTen: 'ten', nvViTri: 'viTri', nvHopDong: 'hopDong', nvDonGia: 'donGia' }[f];
+    d.nvMoi[k] = o.value;
+    if (f === 'nvMa' && e.type === 'change') { d.nvMoi.ma = chuanHoaMa(o.value); o.value = d.nvMoi.ma; }
+    return;
+  }
+  d[f] = o.value;
+  if (f === 'soPhut') d.tuNhapSoPhut = o.value !== '';
+  if (f === 'doiCaVoi' && e.type === 'change') { d.doiCaVoi = maTuO(o.value) || o.value.trim(); o.value = d.doiCaVoi; }
+  if (f === 'trangThai') {
+    d.tuChonTrangThai = true;
+    const vang = laVang(d.trangThai);
+    the.querySelector('[data-f="vao"]').disabled = vang;
+    the.querySelector('[data-f="ra"]').disabled = vang;
+    if (!vang && !d.vao) { d.vao = hhmm(ca.gio_bat_dau); d.ra = hhmm(ca.gio_ket_thuc);
+      the.querySelector('[data-f="vao"]').value = d.vao; the.querySelector('[data-f="ra"]').value = d.ra; }
+  }
+  if ((f === 'vao' || f === 'ra') && !d.tuChonTrangThai && !laVang(d.trangThai) && d.trangThai !== 'Đổi ca') {
+    let goiY = 'Đúng giờ';
+    if (phut(d.vao) > phut(hhmm(ca.gio_bat_dau)) + 5) goiY = 'Đi muộn';
+    else if (d.ra && phut(d.ra) < phut(hhmm(ca.gio_ket_thuc)) - 5) goiY = 'Về sớm';
+    d.trangThai = goiY;
+    the.querySelector('[data-f="trangThai"]').value = goiY;
+  }
+  if (['trangThai', 'vao', 'ra'].includes(f)) {
+    const can = CAN_SO_PHUT(d.trangThai);
+    const o2 = the.querySelector('[data-hien="phut"]');
+    o2.classList.toggle('an', !can);
+    o2.querySelector('label').textContent = `Số phút ${d.trangThai === 'Về sớm' ? 'về sớm' : 'đi muộn'} (bắt buộc)`;
+    the.querySelector('[data-hien="doica"]').classList.toggle('an', d.trangThai !== 'Đổi ca');
+    if (can && !d.tuNhapSoPhut) {
+      const g = goiYSoPhut(d.trangThai, d.vao, d.ra);
+      d.soPhut = g || ''; the.querySelector('[data-f="soPhut"]').value = d.soPhut;
+    }
+  }
+  if (d.tb && d.tb.loai === 'loi') { d.tb = null; the.classList.remove('loi'); }
+  capNhatCanhBao(d);
+}
+
+function chuanHoaMa(s) {
+  const so = String(s).replace(/\D/g, '');
+  return so && so.length <= 4 ? 'ML-' + so.padStart(4, '0') : String(s).trim().toUpperCase();
+}
+function soGio(d) {
+  if (laVang(d.trangThai) || !d.vao || !d.ra) return 0;
+  return Math.max(0, phut(d.ra) - phut(d.vao)) / 60;
+}
+
+/* Cảnh báo quá 12 giờ một ngày (vẫn cho lưu) */
+function capNhatCanhBao(d) {
+  const the = document.querySelector(`[data-khoa="${d.khoa}"]`);
+  if (!the) return;
+  const o = the.querySelector('[data-tb]');
+  if (d.tb && d.tb.loai === 'loi') { o.innerHTML = `<div class="tb loi">${esc(d.tb.chu)}</div>`; return; }
+  const ma = d.moi ? d.nvMoi.ma : d.ma;
+  const tong = (tt.gioTrongNgay[ma] || 0) + soGio(d);
+  if (tong > 12) o.innerHTML = `<div class="tb canh">⚠ Tổng giờ làm trong ngày sẽ là ${tong.toFixed(1)} giờ, vượt 12 giờ theo quy định.</div>`;
+  else if (d.tb) o.innerHTML = `<div class="tb ${d.tb.loai}">${esc(d.tb.chu)}</div>`;
+  else o.innerHTML = '';
+}
+
+/* ---------- Lưu tất cả ---------- */
+function dichLoi(err) {
+  const m = (err && (err.message || err.details)) || 'Lỗi không xác định';
+  if (/mot_lan_moi_ca/.test(m)) return 'Nhân viên này đã được chấm công ca này rồi.';
+  if (/khong_chong_gio/.test(m)) return 'Trùng giờ với một lần chấm công khác của nhân viên này.';
+  if (/so_phut/.test(m)) return 'Chọn "Đi muộn" hoặc "Về sớm" thì phải nhập số phút.';
+  if (/doi_ca/.test(m) && /constraint|violates/.test(m)) return 'Chọn "Đổi ca" thì phải ghi đổi với ai.';
+  if (/doi_ca_voi_fkey|doi_ca_voi_moi_fkey/.test(m)) return 'Mã nhân viên đổi ca không tồn tại.';
+  if (/nhan_vien_pkey/.test(m)) return 'Mã nhân viên đã tồn tại, hãy tìm theo mã để thêm.';
+  if (/nhan_vien_ma_nhan_vien_check/.test(m)) return 'Mã nhân viên phải có dạng ML-0000.';
+  if (/don_gia_gio_check/.test(m)) return 'Đơn giá giờ phải lớn hơn 0.';
+  if (/row-level security|permission denied/.test(m)) return 'Tài khoản không có quyền thực hiện thao tác này.';
+  if (/JWT|session/i.test(m)) return 'Phiên đăng nhập đã hết, hãy đăng nhập lại.';
+  if (/Failed to fetch|NetworkError/i.test(m)) return 'Mất kết nối mạng, dòng này chưa được lưu.';
+  return m;
+}
+
+function kiemTraTruoc(d) {
+  if (d.moi) {
+    const n = d.nvMoi;
+    n.ma = chuanHoaMa(n.ma);
+    if (!/^ML-\d{4}$/.test(n.ma)) return 'Mã nhân viên phải có dạng ML-0000.';
+    if (!n.ten.trim()) return 'Chưa nhập họ tên nhân viên mới.';
+    if (!(Number(n.donGia) > 0)) return 'Đơn giá giờ (nghìn đồng) phải lớn hơn 0.';
+    if (Number(n.donGia) >= 1000) return 'Đơn giá ghi theo nghìn đồng, ví dụ 25 thay cho 25000.';
+    if (tt.dong.some(x => x !== d && !x.daLuu && (x.moi ? x.nvMoi.ma : x.ma) === n.ma)) return 'Mã này bị nhập hai lần trong bảng.';
+  }
+  if (!laVang(d.trangThai)) {
+    if (!d.vao || !d.ra) return 'Cần nhập đủ giờ vào và giờ ra.';
+    if (phut(d.ra) <= phut(d.vao)) return 'Giờ ra phải sau giờ vào.';
+  }
+  if (CAN_SO_PHUT(d.trangThai) && !(Number(d.soPhut) > 0 && Number.isInteger(Number(d.soPhut))))
+    return `Chọn "${d.trangThai}" thì phải nhập số phút (số nguyên lớn hơn 0).`;
+  if (d.trangThai === 'Đổi ca') {
+    d.doiCaVoi = maTuO(d.doiCaVoi);
+    if (!/^ML-\d{4}$/.test(d.doiCaVoi)) return 'Chọn "Đổi ca" thì phải ghi đổi với ai (mã nhân viên).';
+    if (d.doiCaVoi === (d.moi ? d.nvMoi.ma : d.ma)) return 'Không thể đổi ca với chính mình.';
+  }
+  if (d.noi !== $('chonCuaHang').value && !d.ghiChu.trim()) return 'Làm ở cửa hàng khác thì ghi rõ nơi hỗ trợ vào ghi chú.';
+  return null;
+}
+
+$('nutLuuTatCa').addEventListener('click', async () => {
+  const nut = $('nutLuuTatCa');
+  const ngay = $('chonNgay').value, ca = $('chonCa').value;
+  const choLuu = tt.dong.filter(d => !d.daLuu);
+  if (!choLuu.length) return;
+  nut.disabled = true; nut.textContent = 'Đang lưu…';
+  let ok = 0, loi = 0;
+
+  for (const d of choLuu) {
+    const sai = kiemTraTruoc(d);
+    if (sai) { d.tb = { loai: 'loi', chu: sai }; loi++; continue; }
+
+    if (d.moi) {
+      const n = d.nvMoi;
+      const { error } = await sb.from('nhan_vien').insert({
+        ma_nhan_vien: n.ma, ho_ten: n.ten.trim(), ma_cua_hang: $('chonCuaHang').value,
+        vi_tri: n.viTri, loai_hop_dong: n.hopDong, don_gia_gio: Number(n.donGia),
+        ngay_vao_lam: ngay
+      });
+      if (error) { d.tb = { loai: 'loi', chu: dichLoi(error) }; loi++; continue; }
+      // Đã tạo nhân viên: từ giờ dòng này là nhân viên có sẵn, không tạo lại khi lưu lần sau.
+      d.moi = false; d.ma = n.ma; d.ten = n.ten.trim(); d.viTri = n.viTri;
+      tt.nhanVien.push({ ma_nhan_vien: n.ma, ho_ten: d.ten, vi_tri: n.viTri, ma_cua_hang: $('chonCuaHang').value });
+    }
+
+    const vang = laVang(d.trangThai);
+    const { data, error } = await sb.from('cham_cong').insert({
+      ma_nhan_vien: d.ma, ngay, ma_ca: ca,
+      gio_vao: vang ? null : `${ngay}T${d.vao}:00+07:00`,
+      gio_ra: vang ? null : `${ngay}T${d.ra}:00+07:00`,
+      trang_thai: d.trangThai, noi_lam_viec: d.noi, ghi_chu: d.ghiChu.trim() || null,
+      so_phut: CAN_SO_PHUT(d.trangThai) ? Number(d.soPhut) : null,
+      doi_ca_voi: d.trangThai === 'Đổi ca' ? d.doiCaVoi : null
+    }).select('id,thoi_diem_luu').single();
+    if (error) { d.tb = { loai: 'loi', chu: dichLoi(error) }; loi++; continue; }
+    d.daLuu = true; d.id = data.id; d.gioLuu = data.thoi_diem_luu; d.tb = null; ok++;
+    d.hanSua = new Date(new Date(data.thoi_diem_luu).getTime() + 3 * 864e5).toISOString();
+    d.soLanSua = 0; d.moSua = false; d.lichSu = null;
+  }
+
+  // Cập nhật giờ trong ngày để báo người vượt 12 giờ (dữ liệu vẫn được lưu)
+  const { data: gio } = await sb.from('v_gio_cong_ngay').select('ma_nhan_vien,tong_gio,vuot_12_gio').eq('ngay', ngay);
+  tt.gioTrongNgay = Object.fromEntries((gio || []).map(g => [g.ma_nhan_vien, Number(g.tong_gio)]));
+  (gio || []).filter(g => g.vuot_12_gio).forEach(g => {
+    tt.dong.filter(d => d.daLuu && d.ma === g.ma_nhan_vien && d.gioLuu).forEach(d => {
+      d.tb = { loai: 'canh', chu: `⚠ Đã lưu, nhưng tổng giờ làm ngày này là ${Number(g.tong_gio).toFixed(1)} giờ, vượt 12 giờ.` };
+    });
+  });
+
+  nut.textContent = 'Lưu tất cả';
+  ve();
+  $('ghiLuu').textContent = loi
+    ? `Đã lưu ${ok} dòng. ${loi} dòng chưa lưu, xem lý do ở từng dòng.`
+    : `Đã lưu ${ok} dòng lúc ${gioHienTai()}.`;
+});
+
+window.addEventListener('beforeunload', e => { if (coDongChuaLuu()) { e.preventDefault(); e.returnValue = ''; } });
+
+/* Mở trang: nếu đã đăng nhập từ trước thì vào thẳng */
+sb.auth.getSession().then(({ data }) => { if (data.session) batDau(); });
+</script>
+</body>
+</html>
